@@ -11,7 +11,7 @@ import (
 )
 
 type Config struct {
-	Keys map[string][]string `json:"keys"`
+	Keys map[string][]string `json:""`
 }
 
 var config Config
@@ -32,6 +32,8 @@ func loadConfig() {
 	if err != nil {
 		log.Fatal("Error decoding config file:", err)
 	}
+
+	log.Printf("[Debug] Loaded config: %v", config)
 }
 
 func proxyHandler(w http.ResponseWriter, r *http.Request) {
