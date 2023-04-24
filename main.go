@@ -35,6 +35,8 @@ func loadConfig() {
 }
 
 func proxyHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Incoming request: Method=%s, URI=%s, Header=%v", r.Method, r.RequestURI, r.Header)
+
 	authorization := r.Header.Get("Authorization")
 	if len(authorization) == 0 {
 		http.Error(w, "Authorization header is missing", http.StatusBadRequest)
@@ -47,18 +49,23 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token := authorization[7:]
+	log.Printf("Parsed token: %s", token)
+
 	if token[:3] == "ai-" {
 		keys, ok := config.Keys[token]
 		if !ok {
 			http.Error(w, `{"error":{"message":"Invalid Token","code":403}}`, http.StatusForbidden)
 			return
 		}
+		log.Printf("Found keys in config for token %s: %v", token, keys)
 
 		index, _ := keyIndex.LoadOrStore(token, 0)
 		r.Header.Set("Authorization", "Bearer "+keys[index.(int)])
 
 		nextIndex := (index.(int) + 1) % len(keys)
 		keyIndex.Store(token, nextIndex)
+
+		log.Printf("Used key: %s, Updated index: %d", keys[index.(int)], nextIndex)
 	}
 
 	proxyURL := "https://api.openai.com" + r.RequestURI
@@ -75,6 +82,8 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
+
+	log.Printf("Proxy response: StatusCode=%d, Header=%v", resp.StatusCode, resp.Header)
 
 	for k, v := range resp.Header {
 		w.Header()[k] = v
