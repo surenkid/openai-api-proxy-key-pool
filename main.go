@@ -35,8 +35,6 @@ func loadConfig() {
 }
 
 func proxyHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Incoming request: Method=%s, URI=%s, Header=%v", r.Method, r.RequestURI, r.Header)
-
 	authorization := r.Header.Get("Authorization")
 	if len(authorization) == 0 {
 		errorMessage := "Authorization header is missing"
@@ -58,6 +56,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	if token[:3] == "ai-" {
 		keys, ok := config.Keys[token]
 		if !ok {
+			log.Printf("[Debug] config.Keys: %v", config.Keys) // 添加此行以显示 config.Keys 的内容
 			errorMessage := `{"error":{"message":"Invalid Token","code":403}}`
 			log.Printf("[Error] %s", errorMessage)
 			http.Error(w, errorMessage, http.StatusForbidden)
