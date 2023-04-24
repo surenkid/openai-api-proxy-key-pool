@@ -85,6 +85,9 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.Header = r.Header
+	req.Header.Set("Transfer-Encoding", r.Header.Get("Transfer-Encoding"))
+	req.Header.Set("Content-Type", r.Header.Get("Content-Type"))
+	
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		errorMessage := "Error sending proxy request"
@@ -99,6 +102,8 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	for k, v := range resp.Header {
 		w.Header()[k] = v
 	}
+	w.Header().Set("Transfer-Encoding", resp.Header.Get("Transfer-Encoding"))
+	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
 }
