@@ -17,9 +17,12 @@ var config Config
 var keyIndex sync.Map
 
 func loadConfig() {
-	file, err := os.Open("config/config.json")
+	configPath := "config/config.json"
+	file, err := os.Open(configPath)
 	if err != nil {
-		log.Fatal("Error opening config file:", err)
+		cwd, _ := os.Getwd()
+		fullPath := filepath.Join(cwd, configPath)
+		log.Fatalf("Error opening config file at path %s: %v", fullPath, err)
 	}
 	defer file.Close()
 
