@@ -11,7 +11,7 @@ import (
 )
 
 type Config struct {
-	Keys map[string][]string `json:""`
+	Keys map[string][]string `json:"keys"`
 }
 
 var config Config
