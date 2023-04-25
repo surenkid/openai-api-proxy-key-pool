@@ -97,8 +97,6 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	log.Printf("Proxy response: StatusCode=%d, Header=%v", resp.StatusCode, resp.Header)
-
 	for k, v := range resp.Header {
 		w.Header()[k] = v
 	}
