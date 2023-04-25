@@ -2,12 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"io"
 	"log"
 	"net/http"
 	"path/filepath"
 	"os"
 	"sync"
+
+	"github.com/r3labs/sse"
 )
 
 type Config struct {
@@ -32,78 +33,57 @@ func loadConfig() {
 	if err != nil {
 		log.Fatal("Error decoding config file:", err)
 	}
-
-	log.Printf("[Debug] Loaded config: %v", config)
 }
 
 func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	authorization := r.Header.Get("Authorization")
 	if len(authorization) == 0 {
-		errorMessage := "Authorization header is missing"
-		log.Printf("[Error] %s", errorMessage)
-		http.Error(w, errorMessage, http.StatusBadRequest)
+		http.Error(w, "Authorization header is missing", http.StatusBadRequest)
 		return
 	}
 
 	if len(authorization) < 9 || authorization[:7] != "Bearer " {
-		errorMessage := "Invalid Authorization header format"
-		log.Printf("[Error] %s", errorMessage)
-		http.Error(w, errorMessage, http.StatusBadRequest)
+		http.Error(w, "Invalid Authorization header format", http.StatusBadRequest)
 		return
 	}
 
 	token := authorization[7:]
-	log.Printf("Parsed token: %s", token)
-
 	if token[:3] == "ai-" {
 		keys, ok := config.Keys[token]
 		if !ok {
-			log.Printf("[Debug] config.Keys: %v", config.Keys) // 添加此行以显示 config.Keys 的内容
-			errorMessage := `{"error":{"message":"Invalid Token","code":403}}`
-			log.Printf("[Error] %s", errorMessage)
-			http.Error(w, errorMessage, http.StatusForbidden)
+			http.Error(w, `{"error":{"message":"Invalid Token","code":403}}`, http.StatusForbidden)
 			return
 		}
-		log.Printf("Found keys in config for token %s: %v", token, keys)
 
 		index, _ := keyIndex.LoadOrStore(token, 0)
 		r.Header.Set("Authorization", "Bearer "+keys[index.(int)])
 
 		nextIndex := (index.(int) + 1) % len(keys)
 		keyIndex.Store(token, nextIndex)
-
-		log.Printf("Used key: %s, Updated index: %d", keys[index.(int)], nextIndex)
 	}
 
 	proxyURL := "https://api.openai.com" + r.RequestURI
 	req, err := http.NewRequest(r.Method, proxyURL, r.Body)
 	if err != nil {
-		errorMessage := "Error creating proxy request"
-		log.Printf("[Error] %s: %v", errorMessage, err)
-		http.Error(w, errorMessage, http.StatusInternalServerError)
+		http.Error(w, "Error creating proxy request", http.StatusInternalServerError)
 		return
 	}
 
 	req.Header = r.Header
-	req.Header.Set("Transfer-Encoding", r.Header.Get("Transfer-Encoding"))
-	req.Header.Set("Content-Type", r.Header.Get("Content-Type"))
-	
-	resp, err := http.DefaultClient.Do(req)
+
+	client := sse.NewClient(proxyURL)
+	client.Connection.Transport = http.DefaultTransport
+
+	err = client.SubscribeRaw(req, func(msg *sse.Event) {
+		if _, err := w.Write(msg.Data); err != nil {
+			log.Printf("Error writing event data to response: %v", err)
+		}
+	})
+
 	if err != nil {
-		errorMessage := "Error sending proxy request"
-		log.Printf("[Error] %s: %v", errorMessage, err)
-		http.Error(w, errorMessage, http.StatusInternalServerError)
+		http.Error(w, "Error sending proxy request", http.StatusInternalServerError)
 		return
 	}
-	defer resp.Body.Close()
-
-	for k, v := range resp.Header {
-		w.Header()[k] = v
-	}
-	w.Header().Set("Transfer-Encoding", resp.Header.Get("Transfer-Encoding"))
-	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
 }
 
 func main() {
