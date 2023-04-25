@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"path/filepath"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/r3labs/sse"
@@ -74,7 +74,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	client := sse.NewClient(proxyURL)
 	client.Connection.Transport = http.DefaultTransport
 
-	err = client.SubscribeRaw(req, func(msg *sse.Event) {
+	err = client.SubscribeRaw(func(msg *sse.Event) {
 		if _, err := w.Write(msg.Data); err != nil {
 			log.Printf("Error writing event data to response: %v", err)
 		}
