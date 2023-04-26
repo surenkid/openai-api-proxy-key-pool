@@ -1,15 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
+	"unicode/utf8"
 )
 
 type Config struct {
@@ -33,6 +33,25 @@ func loadConfig() {
 	err = decoder.Decode(&config)
 	if err != nil {
 		log.Fatal("Error decoding config file:", err)
+	}
+}
+
+func writeCharByChar(w http.ResponseWriter, r io.Reader) {
+	reader := bufio.NewReader(r)
+	for {
+		char, _, err := reader.ReadRune()
+		if err != nil {
+			if err != io.EOF {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			break
+		}
+
+		buf := make([]byte, utf8.RuneLen(char))
+		utf8.EncodeRune(buf, char)
+
+		w.Write(buf)
+		w.(http.Flusher).Flush()
 	}
 }
 
@@ -72,23 +91,36 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Used key: %s, Updated index: %d", keys[index.(int)], nextIndex)
 	}
 
-	target, _ := url.Parse("https://api.openai.com")
-	proxy := httputil.NewSingleHostReverseProxy(target)
-	proxy.FlushInterval = time.Millisecond * 200
-	proxy.ModifyResponse = func(resp *http.Response) error {
-		contentType := resp.Header.Get("Content-Type")
-		resp.Header.Set("Content-Type", contentType)
-		return nil
+	proxyURL := "https://api.openai.com" + r.RequestURI
+	req, err := http.NewRequest(r.Method, proxyURL, r.Body)
+	if err != nil {
+		errorMessage := "Error creating proxy request"
+		log.Printf("[Error] %s: %v", errorMessage, err)
+		http.Error(w, errorMessage, http.StatusInternalServerError)
+		return
 	}
 
-	proxy.Director = func(req *http.Request) {
-		proxy.Director(req)
-		req.Header = r.Header
-		req.Header.Set("Transfer-Encoding", r.Header.Get("Transfer-Encoding"))
-		req.Header.Set("Content-Type", r.Header.Get("Content-Type"))
-	}
+	req.Header = r.Header
+	req.Header.Set("Transfer-Encoding", r.Header.Get("Transfer-Encoding"))
+	req.Header.Set("Content-Type", r.Header.Get("Content-Type"))
 
-	proxy.ServeHTTP(w, r)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		errorMessage := "Error sending proxy request"
+		log.Printf("[Error] %s: %v", errorMessage, err)
+		http.Error(w, errorMessage, http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	for k, v := range resp.Header {
+		w.Header()[k] = v
+	}
+	w.Header().Set("Transfer-Encoding", resp.Header.Get("Transfer-Encoding"))
+	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+	w.WriteHeader(resp.StatusCode)
+
+	writeCharByChar(w, resp.Body)
 }
 
 func main() {
