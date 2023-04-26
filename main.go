@@ -2,12 +2,14 @@ package main
 
 import (
 	"encoding/json"
-	"io"
 	"log"
 	"net/http"
-	"path/filepath"
+	"net/http/httputil"
+	"net/url"
 	"os"
+	"path/filepath"
 	"sync"
+	"time"
 )
 
 type Config struct {
@@ -70,35 +72,23 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Used key: %s, Updated index: %d", keys[index.(int)], nextIndex)
 	}
 
-	proxyURL := "https://api.openai.com" + r.RequestURI
-	req, err := http.NewRequest(r.Method, proxyURL, r.Body)
-	if err != nil {
-		errorMessage := "Error creating proxy request"
-		log.Printf("[Error] %s: %v", errorMessage, err)
-		http.Error(w, errorMessage, http.StatusInternalServerError)
-		return
+	target, _ := url.Parse("https://api.openai.com")
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy.FlushInterval = time.Millisecond * 200
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		contentType := resp.Header.Get("Content-Type")
+		resp.Header.Set("Content-Type", contentType)
+		return nil
 	}
 
-	req.Header = r.Header
-	req.Header.Set("Transfer-Encoding", r.Header.Get("Transfer-Encoding"))
-	req.Header.Set("Content-Type", r.Header.Get("Content-Type"))
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		errorMessage := "Error sending proxy request"
-		log.Printf("[Error] %s: %v", errorMessage, err)
-		http.Error(w, errorMessage, http.StatusInternalServerError)
-		return
+	proxy.Director = func(req *http.Request) {
+		proxy.Director(req)
+		req.Header = r.Header
+		req.Header.Set("Transfer-Encoding", r.Header.Get("Transfer-Encoding"))
+		req.Header.Set("Content-Type", r.Header.Get("Content-Type"))
 	}
-	defer resp.Body.Close()
 
-	for k, v := range resp.Header {
-		w.Header()[k] = v
-	}
-	w.Header().Set("Transfer-Encoding", resp.Header.Get("Transfer-Encoding"))
-	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	proxy.ServeHTTP(w, r)
 }
 
 func main() {
