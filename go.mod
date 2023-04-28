@@ -1,3 +1,3 @@
-module github.com/surenkid/golang-proxy-api
+module github.com/surenkid/golang-polling-api
 
 go 1.20
