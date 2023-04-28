@@ -89,9 +89,17 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		nextIndex := (index.(int) + 1) % len(keys)
 		keyIndex.Store(token, nextIndex)
 		log.Printf("Used key: %s, Updated index: %d", keys[index.(int)], nextIndex)
+	} else {
+		r.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	proxyURL := "https://api.openai.com" + r.RequestURI
+	var baseURL string
+	if config.Helicone != "" {
+		baseURL = "https://oai.hconeai.com"
+	} else {
+		baseURL = "https://api.openai.com"
+	}
+	proxyURL := baseURL + r.RequestURI
 	req, err := http.NewRequest(r.Method, proxyURL, r.Body)
 	if err != nil {
 		errorMessage := "Error creating proxy request"
@@ -103,6 +111,9 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	req.Header = r.Header
 	req.Header.Set("Transfer-Encoding", r.Header.Get("Transfer-Encoding"))
 	req.Header.Set("Content-Type", r.Header.Get("Content-Type"))
+	if config.Helicone != "" {
+		req.Header.Set("Helicone-Auth", "Bearer "+config.Helicone)
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
