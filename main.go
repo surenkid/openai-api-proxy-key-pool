@@ -13,7 +13,8 @@ import (
 )
 
 type Config struct {
-	Keys map[string][]string `json:"keys"`
+	Keys     map[string][]string `json:"keys"`
+	Helicone string              `json:"helicone"`
 }
 
 var config Config
