@@ -108,6 +108,8 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errorMessage, http.StatusInternalServerError)
 		return
 	}
+	
+	req.URL.RawQuery = r.URL.RawQuery
 
 	req.Header = r.Header
 	req.Header.Set("Transfer-Encoding", r.Header.Get("Transfer-Encoding"))
