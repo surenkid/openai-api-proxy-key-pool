@@ -15,7 +15,7 @@
 1. 克隆项目到本地：
 
 ```bash
-git clone https://github.com/yourusername/openai-api-proxy-key-pool.git
+git clone https://github.com/surenkid/openai-api-proxy-key-pool.git
 ```
 
 2. 进入项目目录：
