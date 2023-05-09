@@ -11,6 +11,17 @@ import (
 
 var keyIndex sync.Map
 
+func getClientIP(r *http.Request) string {
+	ip := r.Header.Get("X-Forwarded-For")
+	if ip == "" {
+		ip = r.Header.Get("X-Real-Ip")
+	}
+	if ip == "" {
+		ip = r.RemoteAddr
+	}
+	return ip
+}
+
 func writeCharByChar(w http.ResponseWriter, r io.Reader) {
 	reader := bufio.NewReader(r)
 	for {
@@ -90,7 +101,9 @@ func ProxyHandler(config Config) http.HandlerFunc {
 		req.Header.Set("Transfer-Encoding", r.Header.Get("Transfer-Encoding"))
 		req.Header.Set("Content-Type", r.Header.Get("Content-Type"))
 		if config.Helicone != "" {
+			clientIP := getClientIP(r)
 			req.Header.Set("Helicone-Auth", "Bearer "+config.Helicone)
+			req.Header.Set("helicone-user-id", clientIP)
 		}
 
 		resp, err := http.DefaultClient.Do(req)
