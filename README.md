@@ -79,7 +79,7 @@ docker-compose up
     "ai-002def": [
       "sk-abcdef1234567890abcdefghijklmnopqrstuvwxyz000004"
     ]
-  ,
+  },
   "helicone": "sk-123456"
 }
 ```
