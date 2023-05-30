@@ -10,6 +10,7 @@ import (
 type Config struct {
 	Keys     map[string][]string `json:"keys"`
 	Helicone string              `json:"helicone"`
+	BaseURL  string              `json:"baseurl"`
 }
 
 func LoadConfig(configPath string) (config Config, err error) {

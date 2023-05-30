@@ -81,10 +81,14 @@ func ProxyHandler(config Config) http.HandlerFunc {
 		}
 
 		var baseURL string
-		if config.Helicone != "" {
-			baseURL = "https://oai.hconeai.com"
+		if config.BaseURL != "" {
+			baseURL = config.BaseURL
 		} else {
-			baseURL = "https://api.openai.com"
+			if config.Helicone != "" {
+				baseURL = "https://oai.hconeai.com"
+			} else {
+				baseURL = "https://api.openai.com"
+			}
 		}
 		proxyURL := baseURL + r.RequestURI
 		req, err := http.NewRequest(r.Method, proxyURL, r.Body)

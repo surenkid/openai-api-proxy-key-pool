@@ -71,16 +71,17 @@ docker-compose up
 ```json
 {
   "keys": {
-    "ai-001abc": [
-      "sk-abcdef1234567890abcdefghijklmnopqrstuvwxyz000001",
-      "sk-abcdef1234567890abcdefghijklmnopqrstuvwxyz000002",
-      "sk-abcdef1234567890abcdefghijklmnopqrstuvwxyz000003"
+    "ai-yourkey1": [
+      "sk-openaikey1",
+      "sk-openaikey2",
+      "sk-openaikey3"
     ],
-    "ai-002def": [
-      "sk-abcdef1234567890abcdefghijklmnopqrstuvwxyz000004"
+    "ai-yourkey2": [
+      "sk-openaikey4"
     ]
   },
-  "helicone": "sk-123456"
+  "helicone": "sk-heliconekey",
+  "baseurl": "https://api.openai.com"
 }
 ```
 
