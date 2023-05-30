@@ -90,6 +90,8 @@ func ProxyHandler(config Config) http.HandlerFunc {
 				baseURL = "https://api.openai.com"
 			}
 		}
+		log.Printf("Using baseURL: %s", baseURL)
+		
 		proxyURL := baseURL + r.RequestURI
 		req, err := http.NewRequest(r.Method, proxyURL, r.Body)
 		if err != nil {
