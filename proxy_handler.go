@@ -91,6 +91,18 @@ func ProxyHandler(config Config) http.HandlerFunc {
 			}
 		}
 		log.Printf("Using baseURL: %s", baseURL)
+
+		r.Header.Del("CF-Connecting-IP")
+		r.Header.Del("X-Forwarded-For")
+		r.Header.Del("X-Real-IP")
+		r.Header.Del("X-Envoy-External-Address")
+		r.Header.Del("X-Forwarded-Host")
+		r.Header.Del("X-Forwarded-Proto")
+		r.Header.Del("Cf-Ray")
+		r.Header.Del("Cf-Visitor")
+		r.Header.Del("Cf-Ipcountry")
+		r.Header.Del("Cf-Request-Id")
+		r.Host = baseURL
 		
 		proxyURL := baseURL + r.RequestURI
 		req, err := http.NewRequest(r.Method, proxyURL, r.Body)
